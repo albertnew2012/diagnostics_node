@@ -62,6 +62,7 @@ public:
         bbox_pub_ = this->create_publisher<std_msgs::msg::String>("/bounding_boxes", 10);
 
         diagnostic_updater_.setHardwareID("lidar_perception_node");
+        diagnostic_updater_.add("Lidar Perception Status", this, &LidarPerceptionNode::diagnosticsCallback);
 
         // Diagnostics for the lidar subscription with custom thresholds
         diag_pub_input = std::make_shared<diagnostic_updater::TopicDiagnostic>(
@@ -90,6 +91,32 @@ private:
         RCLCPP_INFO(this->get_logger(), "Bounding box published.");
     }
 
+    void diagnosticsCallback(diagnostic_updater::DiagnosticStatusWrapper &stat)
+    {
+        // Check for the bounding box publisher
+        if (bbox_pub_->get_subscription_count() > 0)
+        {
+            stat.summary(diagnostic_msgs::msg::DiagnosticStatus::OK, "Bounding box publisher is operating normally.");
+        }
+        else
+        {
+            stat.summary(diagnostic_msgs::msg::DiagnosticStatus::WARN, "No subscribers to bounding box topic.");
+        }
+
+        stat.add("Bounding Box Publisher Count", bbox_pub_->get_subscription_count());
+
+        // Additional checks can be added here for the lidar subscription
+        if (lidar_sub_)
+        {
+            stat.summary(diagnostic_msgs::msg::DiagnosticStatus::OK, "Lidar subscriber is operating normally.");
+            stat.add("Lidar Subscription", "Active");
+        }
+        else
+        {
+            stat.summary(diagnostic_msgs::msg::DiagnosticStatus::ERROR, "Lidar subscription not found.");
+        }
+    }
+
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr lidar_sub_;
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr bbox_pub_;
     diagnostic_updater::Updater diagnostic_updater_;
@@ -97,11 +124,11 @@ private:
     std::shared_ptr<diagnostic_updater::TopicDiagnostic> diag_pub_output;
 
     // Set custom frequency thresholds for diagnostics
-    double min_freq_lidar_ = 8.0;  // Minimum acceptable frequency for lidar points (1 Hz)
-    double max_freq_lidar_ = 30;  // Maximum frequency threshold to avoid warnings for lidar points
+    double min_freq_lidar_ = 1.0;  // Minimum acceptable frequency for lidar points (1 Hz)
+    double max_freq_lidar_ = 9.0;  // Maximum frequency threshold to avoid warnings for lidar points
 
-    double min_freq_bbox_ = 8.0;  // Minimum acceptable frequency for bounding boxes (1 Hz)
-    double max_freq_bbox_ = 30; // Maximum frequency threshold for bounding boxes
+    double min_freq_bbox_ = 1.0;  // Minimum acceptable frequency for bounding boxes (1 Hz)
+    double max_freq_bbox_ = 10.0; // Maximum frequency threshold for bounding boxes
 };
 
 int main(int argc, char **argv)
